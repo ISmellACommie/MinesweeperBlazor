@@ -1,7 +1,100 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+@code{
+    GameBoard board = new GameBoard();
+}
 
-Welcome to your new app.
+<div class="minesweeper-game minesweeper-medium">
+    <div class="minesweeper-board"
+         @oncontextmenu:preventDefault
+         onmousedown="faceOooh(event);"
+         onmouseup="faceSmile();">
+        @{
+            var maxWidth = board.Width + 1;
+            var maxHeight = board.Height + 1;
+            public int GetPlace(int value, int place)
+            {
+                if (value == 0) return 0;
+                return ((value % (place * 10)) - (value % place) / place);
+            }
+        }
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+        <div class="minesweeper-border-topleft"></div>
+        @for (int x = 1; x < maxWidth; x++)
+        {
+            <div class="minesweeper-border-horizontal"></div>
+        } 
+        <div class="minesweeper-border-topright"></div>
+        <div class="minesweeper-border-vertical-long"></div>
+        <div class="minesweeper-border-time-@GetPlace(board.MinesRemaining,  100)"
+             id="mines_hundreds"></div>
+        <div class="minesweeper-border-time-@GetPlace(board.minesRemainingm, 10)"
+             id="mines_tens"></div>
+
+        @for (int x = 0; x <= maxWidth; x++)
+        {
+            @for (int y = 0; y <= maxHeight; y++)
+            {
+                if (x == 0 && y == 0) //Upper-left corner
+                {
+                    <div class="minesweeper=border-jointleft"></div>
+                }
+                else if (x == 0 && y == maxHeight) //Upper-right corner
+                {
+                    <div class="minesweeper-border-jointright"></div>
+                }
+                else if (x == maxWidth && y == 0) //Lower-left corner
+                {
+                    <div class="minesweeper-border-bottomleft"></div>
+                }
+                else if (x == maxWidth && y == maxHeight) //Lower-right corner
+                {
+                    <div class="minesweeper-border-bottomright"></div>
+                }
+                else if (y == 0 || y == maxHeight) //Leftmost column
+                {
+                    <div class="minesweeper-border-horizontal"></div>
+                }
+                else if (x == 0 || x == maxWidth) //Rightmost column
+                {
+                    <div class="minesweeper-border-vertical"></div>
+                }
+                else if (y > 0 && y < maxHeight)
+                {
+                    var currentPanel = board.Panels.First(m => m.X == x && m.Y == y);
+                    if (currentPanel.IsRevealed)
+                    {
+                        if (currentPanel.IsMine) //Mine
+                        {
+                            <div class="minesweeper-gamepiece minesweeper-mine"></div>
+                        }
+                        else if (currentPanel.AdjacentMines == 0) //Blank
+                        {
+                            <div class="minesweeper-gamepiece minesweeper-0"></div>
+                        }
+                        else //Number
+                        {
+                            <div class="minesweeper-gamepiece minesweeper-@currentPanel.AdjacentMines"></div>
+                        }
+                    }
+                    else if (currentPanel.IsFlagged) //Flagged
+                    {
+                        <div class="minesweeper-gamepiece minesweeper-flagged"
+                             @oncontextmenu="@(() => board.FlagPanel(x, y))"
+                             @oncontextmenu:preventDefault>
+
+                        </div>
+                    }
+                    else //Unrevealed
+                    {
+                        <div class="minesweeper-gamepiece minesweeper-unrevealed"
+                             @onclick="@(() => board.MakeMove(x, y))"
+                             @oncontextmenu="@(() => board.FlagPanel(x, y))"
+                             @oncontextmenu:preventDefault>
+                        </div>
+                    }
+                }
+            }
+        }
+    </div>
+</div>
