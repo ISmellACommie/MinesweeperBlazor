@@ -19,6 +19,14 @@
             Y = y;
         }
 
+        public void Flag()
+        {
+            if (!IsRevealed)
+            {
+                IsFlagged = !IsFlagged;
+            }
+        }
+
         public void Reveal()
         {
             IsRevealed = true;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MinesweeperBlazor
 {
@@ -12,6 +12,14 @@ namespace MinesweeperBlazor
         public int MineCount { get; set; } = 40;
         public List<Panel> Panels { get; set; }
         public GameStatus Status { get; set; }
+        public int MinesRemaining
+        {
+            get
+            {
+                return MineCount - Panels.Where(x => x.IsFlagged).Count();
+            }
+        }
+        public Stopwatch Stopwatch { get; set; }
 
         public void Initialise(int width, int height, int mines)
         {
@@ -36,6 +44,7 @@ namespace MinesweeperBlazor
         public void Reset()
         {
             Initialise(Width, Height, MineCount);
+            Stopwatch = new Stopwatch();
         }
 
         public List<Panel> GetNeighbours(int x, int y)
@@ -86,6 +95,83 @@ namespace MinesweeperBlazor
 
             //Mark the game as started.
             Status = GameStatus.InProgress;
+            Stopwatch.Start();
+        }
+
+        public void MakeMove(int x, int y)
+        {
+            if (Status == GameStatus.AwaitingFirstMove)
+            {
+                FirstMove(x, y);
+            }
+            RevealPanel(x, y);
+        }
+
+        public void RevealPanel(int x, int y)
+        {
+            //Step 1: Find and reveal the clicked panel.
+            var selectedPanel = Panels.First(panel => panel.X == x && panel.Y == y);
+            selectedPanel.Reveal();
+
+            //Step 2: If the panel is a mine, show all mines. Game over.
+            if (selectedPanel.IsMine)
+            {
+                Status = GameStatus.Failed;
+                RevealAllMines();
+                return;
+            }
+
+            //Step 3: If the panel is a zero, cascade reveal neighbours.
+            if (selectedPanel.AdjacentMines == 0)
+            {
+                RevealZeros(x, y);
+            }
+
+            //Step 4: If this move cause the game to be complete, mark it as such.
+            CompletionCheck();
+        }
+
+        private void RevealAllMines()
+        {
+            Panels.Where(x => x.IsMine).ToList().ForEach(x => x.IsRevealed = true);
+        }
+
+        public void RevealZeros(int x, int y)
+        {
+            //Get all neighbour panels.
+            var neighbourPanels = GetNeighbours(x, y).Where(panel => !panel.IsRevealed);
+
+            foreach (var neighbour in neighbourPanels)
+            {
+                //For each neighbour panel, reveal that panel.
+                neighbour.IsRevealed = true;
+
+                //If the neighbour is also 0, reveal all of its neighbours too.
+                if (neighbour.AdjacentMines == 0)
+                {
+                    RevealZeros(neighbour.X, neighbour.Y);
+                }
+            }
+        }
+
+        private void CompletionCheck()
+        {
+            var hiddenPanels = Panels.Where(x => !x.IsRevealed).Select(x => x.ID);
+            var minePanels = Panels.Where(x => x.IsMine).Select(x => x.ID);
+            if (!hiddenPanels.Except(minePanels).Any())
+            {
+                Status = GameStatus.Completed;
+                Stopwatch.Stop();
+            }
+        }
+
+        public void FlagPanel(int x, int y)
+        {
+            if (MinesRemaining > 0)
+            {
+                var panel = Panels.Where(z => z.X == x && z.Y == y).First();
+                panel.Flag();
+            }
         }
     }
 }
